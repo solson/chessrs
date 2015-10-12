@@ -1,0 +1,8 @@
+[package]
+name = "chessrs"
+version = "0.1.0"
+authors = ["Scott Olson <scott@solson.me>"]
+
+[dependencies]
+glium = "0.9.1"
+time = "0.1.32"
