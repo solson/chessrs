@@ -21,14 +21,22 @@ struct GameState {
     triangle_angle: f32,
 }
 
+/// Actions to take from the game loop.
+enum Action {
+    None,
+    Stop,
+}
+
 impl GameState {
-    fn handle_input(&mut self) {
+    fn handle_input(&mut self) -> Action {
         for event in self.display.poll_events() {
             match event {
-                glium::glutin::Event::Closed => return,
-                _ => ()
+                glium::glutin::Event::Closed => return Action::Stop,
+                _ => {},
             }
         }
+
+        Action::None
     }
 
     fn update(&mut self) {
@@ -117,7 +125,11 @@ fn main() {
     // let mut frame_start = time_start_ns;
 
     loop {
-        game.handle_input();
+        match game.handle_input() {
+            Action::Stop => return,
+            Action::None => {},
+        }
+
         game.update();
         game.render();
 
