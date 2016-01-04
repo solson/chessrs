@@ -8,7 +8,6 @@ use glium::backend::glutin_backend::GlutinFacade;
 struct Vertex {
     position: [f32; 2],
 }
-
 implement_vertex!(Vertex, position);
 
 struct GameState {
@@ -28,6 +27,29 @@ enum Action {
 }
 
 impl GameState {
+    fn new() -> Self {
+        let vertex1 = Vertex { position: [-0.5, -0.5] };
+        let vertex2 = Vertex { position: [ 0.0,  0.5] };
+        let vertex3 = Vertex { position: [ 0.5, -0.25] };
+        let shape = vec![vertex1, vertex2, vertex3];
+
+        let display = open_window().unwrap();
+        let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+        let program = glium::Program::from_source(&display, VERTEX_SHADER_SOURCE,
+                                                  FRAGMENT_SHADER_SOURCE, None).unwrap();
+
+        GameState {
+            display: display,
+            vertex_buffer: vertex_buffer,
+            indices: indices,
+            program: program,
+
+            last_frame_time: time::precise_time_ns(),
+            triangle_angle: 0.0,
+        }
+    }
+
     fn handle_input(&mut self) -> Action {
         for event in self.display.poll_events() {
             match event {
@@ -100,26 +122,7 @@ const FRAGMENT_SHADER_SOURCE: &'static str = r#"
 "#;
 
 fn main() {
-    let vertex1 = Vertex { position: [-0.5, -0.5] };
-    let vertex2 = Vertex { position: [ 0.0,  0.5] };
-    let vertex3 = Vertex { position: [ 0.5, -0.25] };
-    let shape = vec![vertex1, vertex2, vertex3];
-
-    let display = open_window().unwrap();
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-    let program = glium::Program::from_source(&display, VERTEX_SHADER_SOURCE,
-                                              FRAGMENT_SHADER_SOURCE, None).unwrap();
-
-    let mut game = GameState {
-        display: display,
-        vertex_buffer: vertex_buffer,
-        indices: indices,
-        program: program,
-
-        last_frame_time: time::precise_time_ns(),
-        triangle_angle: 0.0,
-    };
+    let mut game = GameState::new();
 
     // let mut frame_count = 0;
     // let mut frame_start = time_start_ns;
