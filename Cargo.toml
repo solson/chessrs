@@ -4,5 +4,6 @@ name = "chessrs"
 version = "0.1.0"
 
 [dependencies]
+cgmath = "0.7.0"
 glium = "0.13.2"
 time = "0.1.34"
