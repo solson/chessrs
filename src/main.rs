@@ -2,7 +2,7 @@ extern crate cgmath;
 #[macro_use] extern crate glium;
 extern crate time;
 
-use cgmath::Point2;
+use cgmath::{Point2, Vector2, EuclideanVector};
 use glium::glutin;
 use glium::backend::glutin_backend::GlutinFacade;
 
@@ -53,7 +53,9 @@ struct GameState {
     time_last_frame: u64,
 
     board: Board<bool>,
+
     camera_center: Point2<f32>,
+    camera_velocity: Vector2<f32>,
     camera_zoom: f32,
 }
 
@@ -74,7 +76,9 @@ impl GameState {
             time_last_frame: time::precise_time_ns(),
 
             board: Board::new_test_board(),
+
             camera_center: Point2::new(4.0, 2.0),
+            camera_velocity: Vector2::new(0.0, 0.0),
             camera_zoom: DEFAULT_ZOOM,
         }
     }
@@ -85,33 +89,30 @@ impl GameState {
         use glium::glutin::MouseScrollDelta::*;
         use glium::glutin::VirtualKeyCode::*;
 
-        // Units: board cells / second
-        let camera_speed = 5.0;
-
         for event in self.display.poll_events() {
             match event {
                 Closed => return Action::Stop,
 
-                // FIXME: This camera movement code is utterly dumb.
                 KeyboardInput(Pressed, _, Some(key_code)) => match key_code {
-                    Up => {
-                        self.camera_center.y += camera_speed * self.time_factor;
-                    }
-                    Down => {
-                        self.camera_center.y -= camera_speed * self.time_factor;
-                    }
-                    Left => {
-                        self.camera_center.x -= camera_speed * self.time_factor;
-                    }
-                    Right => {
-                        self.camera_center.x += camera_speed * self.time_factor;
-                    }
+                    Up    => self.camera_velocity.y = 1.0,
+                    Down  => self.camera_velocity.y = -1.0,
+                    Left  => self.camera_velocity.x = -1.0,
+                    Right => self.camera_velocity.x = 1.0,
+                    _ => {}
+                },
+
+                KeyboardInput(Released, _, Some(key_code)) => match key_code {
+                    Up    => self.camera_velocity.y = 0.0,
+                    Down  => self.camera_velocity.y = 0.0,
+                    Left  => self.camera_velocity.x = 0.0,
+                    Right => self.camera_velocity.x = 0.0,
                     _ => {}
                 },
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
                     // FIXME: Magic numbers.
-                    self.camera_zoom *= 1.1 * scroll_amount;
+                    println!("{:?}", scroll_amount);
+                    self.camera_zoom += scroll_amount;
                 }
 
                 _ => {},
@@ -127,6 +128,11 @@ impl GameState {
         // Nanoseconds to seconds.
         self.time_factor = (time - self.time_last_frame) as f32 / 1e9;
         self.time_last_frame = time;
+
+        // Units: board cells / second
+        const CAMERA_SPEED: f32 = 2.5;
+        self.camera_velocity.normalize();
+        self.camera_center = self.camera_center + self.camera_velocity * CAMERA_SPEED * self.time_factor;
     }
 
     fn render(&mut self) {
