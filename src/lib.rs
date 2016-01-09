@@ -3,12 +3,14 @@ extern crate cgmath;
 #[macro_use] extern crate glium;
 extern crate time;
 
+mod board;
+pub mod units;
+
 use bit_set::BitSet;
 use cgmath::{Point2, Vector2, EuclideanVector, Vector};
 use glium::glutin::{self, VirtualKeyCode};
 use glium::backend::glutin_backend::GlutinFacade;
 
-mod board;
 use board::Board;
 
 // Units: board cells / second
@@ -16,25 +18,6 @@ const CAMERA_SPEED: f32 = 4.0;
 
 // Units: TODO: what are the units?
 const DEFAULT_ZOOM: f32 = 1.0 / 7.5;
-
-mod units {
-    //! This module provides constants for use in unit conversions. They should be multiplied with
-    //! the value being converted. For example:
-    //!
-    //! ```
-    //! let nanoseconds = 123456789.0;
-    //! let seconds = nanoseconds * units::NS_TO_S;
-    //! ```
-    //!
-    //! Never divide by a units constant. Instead, multiply by the opposite constant (e.g.
-    //! `S_TO_NS` instead of `NS_TO_S`.
-
-    /// Seconds per nanosecond.
-    pub const NS_TO_S: f32 = 1e-9;
-
-    /// Nanoseconds per second.
-    pub const S_TO_NS: f32 = 1e9;
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Vertex {
@@ -45,7 +28,7 @@ implement_vertex!(Vertex, position);
 
 /// Actions to take from the game loop.
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum Action {
+pub enum Action {
     None,
     Stop,
 }
@@ -67,7 +50,7 @@ const FRAGMENT_SHADER_SOURCE: &'static str = r#"
     }
 "#;
 
-struct GameState {
+pub struct GameState {
     display: GlutinFacade,
     shader_program: glium::Program,
 
@@ -88,7 +71,7 @@ struct GameState {
 }
 
 impl GameState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let display = open_window().unwrap();
         let shader_program = glium::Program::from_source(
             &display, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE, None).unwrap();
@@ -110,7 +93,7 @@ impl GameState {
         }
     }
 
-    fn handle_input(&mut self) -> Action {
+    pub fn handle_input(&mut self) -> Action {
         use glium::glutin::ElementState::*;
         use glium::glutin::Event::*;
         use glium::glutin::MouseScrollDelta::*;
@@ -140,7 +123,7 @@ impl GameState {
         Action::None
     }
 
-    fn update(&mut self) {
+    pub fn update(&mut self) {
         use glium::glutin::VirtualKeyCode as Key;
 
         let time = time::precise_time_ns();
@@ -159,7 +142,7 @@ impl GameState {
     }
 
     // FIXME: Many magic numbers.
-    fn render(&mut self) {
+    pub fn render(&mut self) {
         use glium::Surface;
 
         let mut target = self.display.draw();
@@ -223,18 +206,4 @@ fn open_window() -> Result<GlutinFacade, glium::GliumCreationError<glutin::Creat
         .with_title(String::from("Chessrs"))
         .with_vsync()
         .build_glium()
-}
-
-fn main() {
-    let mut game = GameState::new();
-
-    loop {
-        match game.handle_input() {
-            Action::Stop => break,
-            Action::None => {},
-        }
-
-        game.update();
-        game.render();
-    }
 }
