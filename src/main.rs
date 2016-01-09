@@ -1,13 +1,40 @@
+extern crate bit_set;
 extern crate cgmath;
 #[macro_use] extern crate glium;
 extern crate time;
 
-use cgmath::{Point2, Vector2, EuclideanVector};
-use glium::glutin;
+use bit_set::BitSet;
+use cgmath::{Point2, Vector2, EuclideanVector, Vector};
+use glium::glutin::{self, VirtualKeyCode};
 use glium::backend::glutin_backend::GlutinFacade;
 
 mod board;
 use board::Board;
+
+// Units: board cells / second
+const CAMERA_SPEED: f32 = 4.0;
+
+// Units: TODO: what are the units?
+const DEFAULT_ZOOM: f32 = 1.0 / 7.5;
+
+mod units {
+    //! This module provides constants for use in unit conversions. They should be multiplied with
+    //! the value being converted. For example:
+    //!
+    //! ```
+    //! let nanoseconds = 123456789.0;
+    //! let seconds = nanoseconds * units::NS_TO_S;
+    //! ```
+    //!
+    //! Never divide by a units constant. Instead, multiply by the opposite constant (e.g.
+    //! `S_TO_NS` instead of `NS_TO_S`.
+
+    /// Seconds per nanosecond.
+    pub const NS_TO_S: f32 = 1e-9;
+
+    /// Nanoseconds per second.
+    pub const S_TO_NS: f32 = 1e9;
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Vertex {
@@ -55,11 +82,10 @@ struct GameState {
     board: Board<bool>,
 
     camera_center: Point2<f32>,
-    camera_velocity: Vector2<f32>,
     camera_zoom: f32,
-}
 
-const DEFAULT_ZOOM: f32 = 1.0 / 7.5;
+    held_keys: BitSet,
+}
 
 impl GameState {
     fn new() -> Self {
@@ -78,8 +104,9 @@ impl GameState {
             board: Board::new_test_board(),
 
             camera_center: Point2::new(4.0, 2.0),
-            camera_velocity: Vector2::new(0.0, 0.0),
             camera_zoom: DEFAULT_ZOOM,
+
+            held_keys: BitSet::new(),
         }
     }
 
@@ -87,27 +114,18 @@ impl GameState {
         use glium::glutin::ElementState::*;
         use glium::glutin::Event::*;
         use glium::glutin::MouseScrollDelta::*;
-        use glium::glutin::VirtualKeyCode::*;
 
         for event in self.display.poll_events() {
             match event {
                 Closed => return Action::Stop,
 
-                KeyboardInput(Pressed, _, Some(key_code)) => match key_code {
-                    Up    => self.camera_velocity.y = 1.0,
-                    Down  => self.camera_velocity.y = -1.0,
-                    Left  => self.camera_velocity.x = -1.0,
-                    Right => self.camera_velocity.x = 1.0,
-                    _ => {}
-                },
+                KeyboardInput(Pressed, _, Some(key)) => {
+                    self.held_keys.insert(key as usize);
+                }
 
-                KeyboardInput(Released, _, Some(key_code)) => match key_code {
-                    Up    => self.camera_velocity.y = 0.0,
-                    Down  => self.camera_velocity.y = 0.0,
-                    Left  => self.camera_velocity.x = 0.0,
-                    Right => self.camera_velocity.x = 0.0,
-                    _ => {}
-                },
+                KeyboardInput(Released, _, Some(key)) => {
+                    self.held_keys.remove(&(key as usize));
+                }
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
                     // FIXME: Magic numbers.
@@ -123,18 +141,24 @@ impl GameState {
     }
 
     fn update(&mut self) {
-        let time = time::precise_time_ns();
+        use glium::glutin::VirtualKeyCode as Key;
 
-        // Nanoseconds to seconds.
-        self.time_factor = (time - self.time_last_frame) as f32 / 1e9;
+        let time = time::precise_time_ns();
+        self.time_factor = (time - self.time_last_frame) as f32 * units::NS_TO_S;
         self.time_last_frame = time;
 
-        // Units: board cells / second
-        const CAMERA_SPEED: f32 = 2.5;
-        self.camera_velocity.normalize();
-        self.camera_center = self.camera_center + self.camera_velocity * CAMERA_SPEED * self.time_factor;
+        let camera_direction = Vector2 {
+            x: self.get_key_direction(Key::Right, Key::Left),
+            y: self.get_key_direction(Key::Up, Key::Down),
+        };
+
+        if camera_direction != Vector2::zero() {
+            let frame_step = CAMERA_SPEED * self.time_factor;
+            self.camera_center = self.camera_center + camera_direction.normalize_to(frame_step);
+        }
     }
 
+    // FIXME: Many magic numbers.
     fn render(&mut self) {
         use glium::Surface;
 
@@ -173,6 +197,21 @@ impl GameState {
 
         target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
                     &Default::default()).unwrap();
+    }
+
+    /// Returns whether the key is currently being held down by the user.
+    fn is_key_held(&self, key: VirtualKeyCode) -> bool {
+        self.held_keys.contains(&(key as usize))
+    }
+
+    /// Returns `1.0` if `positive` is held, `-1.0` if `negative` is held, and `0.0` if both or
+    /// neither are held.
+    fn get_key_direction(&self, positive: VirtualKeyCode, negative: VirtualKeyCode) -> f32 {
+        match (self.is_key_held(positive), self.is_key_held(negative)) {
+            (true, false) => 1.0,
+            (false, true) => -1.0,
+            _ => 0.0,
+        }
     }
 }
 
