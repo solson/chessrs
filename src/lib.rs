@@ -4,6 +4,7 @@ extern crate cgmath;
 extern crate time;
 
 mod board;
+mod camera;
 pub mod units;
 
 use bit_set::BitSet;
@@ -12,18 +13,6 @@ use glium::glutin::{self, VirtualKeyCode};
 use glium::backend::glutin_backend::GlutinFacade;
 
 use board::Board;
-
-/// Units: board cells / second
-const CAMERA_SPEED: f32 = 4.0;
-
-/// The numerator is the basic side-length of the screen (`2.0` since OpenGL ranges from `-1.0` to
-/// `1.0`). The denominator denotes how many board cells will fit across the screen.
-const ZOOM_MIN: f32 = 2.0 / 15.0;
-const ZOOM_MAX: f32 = 2.0 / 2.5;
-
-/// Zoom ranges from `0.0` (fully zoomed out) to `1.0` (fully zoomed in).
-const ZOOM_DEFAULT: f32 = 0.3;
-const ZOOM_STEP: f32 = 0.1;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Vertex {
@@ -69,10 +58,7 @@ pub struct GameState {
     time_last_frame: u64,
 
     board: Board<bool>,
-
-    camera_center: Point2<f32>,
-    camera_zoom: f32,
-
+    camera: camera::Camera,
     held_keys: BitSet,
 }
 
@@ -92,8 +78,10 @@ impl GameState {
 
             board: Board::new_test_board(),
 
-            camera_center: Point2::new(4.0, 2.0),
-            camera_zoom: ZOOM_DEFAULT,
+            camera: camera::Camera {
+                center: Point2::new(4.0, 2.0),
+                zoom: camera::ZOOM_DEFAULT,
+            },
 
             held_keys: BitSet::new(),
         }
@@ -117,9 +105,7 @@ impl GameState {
                 }
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
-                    // FIXME: Magic numbers.
-                    let zoom = self.camera_zoom + scroll_amount * ZOOM_STEP;
-                    self.camera_zoom = clamp(zoom, 0.0, 1.0);
+                    self.camera.zoom_steps(scroll_amount);
                 }
 
                 _ => {},
@@ -142,8 +128,8 @@ impl GameState {
         };
 
         if camera_direction != Vector2::zero() {
-            let frame_step = CAMERA_SPEED * self.time_factor;
-            self.camera_center = self.camera_center + camera_direction.normalize_to(frame_step);
+            let frame_step = camera::CAMERA_SPEED * self.time_factor;
+            self.camera.center = self.camera.center + camera_direction.normalize_to(frame_step);
         }
     }
 
@@ -158,8 +144,8 @@ impl GameState {
         for i in 0..self.board.width() {
             for j in 0..self.board.height() {
                 if self.board[j as usize][i as usize] {
-                    let x = i as f32 - self.camera_center.x;
-                    let y = j as f32 - self.camera_center.y;
+                    let x = i as f32 - self.camera.center.x;
+                    let y = j as f32 - self.camera.center.y;
                     self.draw_quad(&mut target, x, y, radius, 1.0, 1.0);
                 }
             }
@@ -173,7 +159,7 @@ impl GameState {
                  shade: f32) {
         use glium::Surface;
 
-        zoom *= interpolate_linear(ZOOM_MIN, ZOOM_MAX, self.camera_zoom);
+        zoom *= self.camera.zoom_factor();
 
         // Top/bottom, left/right.
         let tl = Vertex { position: [(x - radius) * zoom, (y - radius) * zoom] };
@@ -214,18 +200,4 @@ fn open_window() -> Result<GlutinFacade, glium::GliumCreationError<glutin::Creat
         .with_title(String::from("Chessrs"))
         .with_vsync()
         .build_glium()
-}
-
-fn interpolate_linear(start: f32, end: f32, amount: f32) -> f32 {
-    start + (end - start) * amount
-}
-
-fn clamp(val: f32, min: f32, max: f32) -> f32 {
-    if val < min {
-        min
-    } else if val > max {
-        max
-    } else {
-        val
-    }
 }
