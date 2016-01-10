@@ -13,11 +13,17 @@ use glium::backend::glutin_backend::GlutinFacade;
 
 use board::Board;
 
-// Units: board cells / second
+/// Units: board cells / second
 const CAMERA_SPEED: f32 = 4.0;
 
-// Units: TODO: what are the units?
-const DEFAULT_ZOOM: f32 = 1.0 / 7.5;
+/// The numerator is the basic side-length of the screen (`2.0` since OpenGL ranges from `-1.0` to
+/// `1.0`). The denominator denotes how many board cells will fit across the screen.
+const ZOOM_MIN: f32 = 2.0 / 15.0;
+const ZOOM_MAX: f32 = 2.0 / 2.5;
+
+/// Zoom ranges from `0.0` (fully zoomed out) to `1.0` (fully zoomed in).
+const ZOOM_DEFAULT: f32 = 0.3;
+const ZOOM_STEP: f32 = 0.1;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Vertex {
@@ -87,7 +93,7 @@ impl GameState {
             board: Board::new_test_board(),
 
             camera_center: Point2::new(4.0, 2.0),
-            camera_zoom: DEFAULT_ZOOM,
+            camera_zoom: ZOOM_DEFAULT,
 
             held_keys: BitSet::new(),
         }
@@ -112,8 +118,8 @@ impl GameState {
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
                     // FIXME: Magic numbers.
-                    println!("{:?}", scroll_amount);
-                    self.camera_zoom += scroll_amount;
+                    let zoom = self.camera_zoom + scroll_amount * ZOOM_STEP;
+                    self.camera_zoom = clamp(zoom, 0.0, 1.0);
                 }
 
                 _ => {},
@@ -154,18 +160,20 @@ impl GameState {
                 if self.board[j as usize][i as usize] {
                     let x = i as f32 - self.camera_center.x;
                     let y = j as f32 - self.camera_center.y;
-                    self.draw_quad(&mut target, x, y, radius, self.camera_zoom, 1.0);
+                    self.draw_quad(&mut target, x, y, radius, 1.0, 1.0);
                 }
             }
         }
 
-        self.draw_quad(&mut target, 0.0, 0.0, radius, self.camera_zoom / 10.0, 0.5);
+        self.draw_quad(&mut target, 0.0, 0.0, radius, 0.1, 0.5);
         target.finish().unwrap();
     }
 
-    fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, zoom: f32,
+    fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, mut zoom: f32,
                  shade: f32) {
         use glium::Surface;
+
+        zoom *= interpolate_linear(ZOOM_MIN, ZOOM_MAX, self.camera_zoom);
 
         // Top/bottom, left/right.
         let tl = Vertex { position: [(x - radius) * zoom, (y - radius) * zoom] };
@@ -206,4 +214,18 @@ fn open_window() -> Result<GlutinFacade, glium::GliumCreationError<glutin::Creat
         .with_title(String::from("Chessrs"))
         .with_vsync()
         .build_glium()
+}
+
+fn interpolate_linear(start: f32, end: f32, amount: f32) -> f32 {
+    start + (end - start) * amount
+}
+
+fn clamp(val: f32, min: f32, max: f32) -> f32 {
+    if val < min {
+        min
+    } else if val > max {
+        max
+    } else {
+        val
+    }
 }
