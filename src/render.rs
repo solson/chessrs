@@ -1,3 +1,4 @@
+use cgmath;
 use glium;
 use glium::glutin;
 use glium::backend::glutin_backend::GlutinFacade;
@@ -5,8 +6,9 @@ use glium::backend::glutin_backend::GlutinFacade;
 const VERTEX_SHADER_SOURCE: &'static str = r#"
     #version 140
     in vec2 position;
+    uniform mat4 projection;
     void main() {
-        gl_Position = vec4(position, 0.0, 1.0);
+        gl_Position = projection * vec4(position, 0.0, 1.0);
     }
 "#;
 
@@ -57,7 +59,11 @@ impl Display {
 
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-        let uniforms = uniform! { shade: shade };
+        let projection: [[f32; 4]; 4] = cgmath::ortho(0.0, 800.0, 0.0, 800.0, 1.0, -1.0).into();
+        let uniforms = uniform! {
+            projection: projection,
+            shade: shade,
+        };
 
         target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
                     &Default::default()).unwrap();
