@@ -34,11 +34,13 @@ impl Display {
         use glium::DisplayBuild;
 
         let monitor = glutin::get_primary_monitor();
-        let (width, height) = monitor.get_dimensions();
+        let (mut width, mut height) = monitor.get_dimensions();
+        width = width * 3 / 4;
+        height = height * 3 / 4;
 
         let backend = glutin::WindowBuilder::new()
-            // .with_dimensions(width, height)
-            .with_fullscreen(monitor)
+            .with_dimensions(width, height)
+            // .with_fullscreen(monitor)
             .with_title(String::from("Chessrs"))
             .with_vsync()
             .build_glium()
