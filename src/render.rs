@@ -1,7 +1,6 @@
 use cgmath;
 use glium;
 use glium::glutin;
-use glium::backend::glutin_backend::GlutinFacade;
 
 const VERTEX_SHADER_SOURCE: &'static str = r#"
     #version 140
@@ -22,16 +21,22 @@ const FRAGMENT_SHADER_SOURCE: &'static str = r#"
 "#;
 
 pub struct Display {
-    pub backend: GlutinFacade,
+    pub backend: glium::Display,
     shader_program: glium::Program,
+    width: u32,
+    height: u32,
 }
 
 impl Display {
     pub fn new_window() -> Self {
         use glium::DisplayBuild;
 
+        let monitor = glutin::get_primary_monitor();
+        let (width, height) = monitor.get_dimensions();
+
         let backend = glutin::WindowBuilder::new()
-            .with_dimensions(800, 800)
+            // .with_dimensions(width, height)
+            .with_fullscreen(monitor)
             .with_title(String::from("Chessrs"))
             .with_vsync()
             .build_glium()
@@ -43,6 +48,8 @@ impl Display {
         Display {
             backend: backend,
             shader_program: shader_program,
+            width: width,
+            height: height,
         }
     }
 
@@ -59,7 +66,9 @@ impl Display {
 
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-        let projection: [[f32; 4]; 4] = cgmath::ortho(0.0, 800.0, 0.0, 800.0, 1.0, -1.0).into();
+        let aspect_ratio = self.width as f32 / self.height as f32;
+        let projection: [[f32; 4]; 4] =
+            cgmath::ortho(-aspect_ratio, aspect_ratio, -1.0, 1.0, 1.0, -1.0).into();
         let uniforms = uniform! {
             projection: projection,
             shade: shade,
