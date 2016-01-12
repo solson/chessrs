@@ -19,11 +19,11 @@ impl Board<bool> {
     }
 
     pub fn new_test_board() -> Self {
-        let mut board = Board::new(9, 5);
-        board[4][3] = true;
-        board[3][3] = true;
-        board[2][3] = true;
-        board[4][4] = true;
+        let mut board = Board::new(2, 3);
+        board[2][0] = true;
+        board[1][0] = true;
+        board[0][0] = true;
+        board[2][1] = true;
         board
     }
 
