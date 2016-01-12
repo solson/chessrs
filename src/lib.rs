@@ -9,7 +9,7 @@ mod render;
 pub mod units;
 
 use bit_set::BitSet;
-use cgmath::{EuclideanVector, Point2, SquareMatrix, Vector, Vector2, Vector4};
+use cgmath::{EuclideanVector, Point, Point2, SquareMatrix, Vector, Vector2, Vector4};
 use glium::glutin::VirtualKeyCode;
 
 use board::Board;
@@ -26,6 +26,7 @@ pub struct GameState {
     display: Display,
     held_keys: BitSet,
     board: Board<bool>,
+    mouse_position: Point2<f32>,
 
     /// Set to the current time in nanoseconds at the beginning of each frame's `update` step.
     time_last_frame: u64,
@@ -42,6 +43,7 @@ impl GameState {
             display: Display::new_window(),
             board: Board::new_test_board(),
             held_keys: BitSet::new(),
+            mouse_position: Point2::origin(),
 
             // HACK: Assumes 60 fps. On the other hand, it's only for the first frame.
             time_factor: 1.0 / 60.0,
@@ -68,6 +70,21 @@ impl GameState {
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
                     self.display.camera.zoom_steps(scroll_amount);
+                }
+
+                MouseMoved((x_pixel, y_pixel)) => {
+                    // Convert from pixel indices ranging from `0..width` and `0..height` to OpenGL
+                    // screen coordinates ranging from `-1.0..1.0`.
+                    let x_screen = 2.0 * x_pixel as f32 / self.display.width as f32 - 1.0;
+                    let y_screen = -2.0 * y_pixel as f32 / self.display.height as f32 + 1.0;
+
+                    // Convert from OpenGL screen coordinates to board coordinates using the
+                    // inverse of the view transformation matrix.
+                    let inv_view = self.display.view_transform().invert().unwrap();
+                    let screen_vec = Vector4::new(x_screen, y_screen, 0.0, 1.0);
+                    let board_vec = inv_view * screen_vec;
+
+                    self.mouse_position = Point2::new(board_vec.x, board_vec.y);
                 }
 
                 _ => {},
@@ -108,7 +125,13 @@ impl GameState {
             for y in 0..self.board.height() {
                 if self.board[y as usize][x as usize] {
                     let point = Point2::new(x as f32, y as f32);
-                    self.display.draw_quad(&mut target, point, radius, 1.0);
+                    let shade = if (x as f32 - self.mouse_position.x).abs() <= radius &&
+                                   (y as f32 - self.mouse_position.y).abs() <= radius {
+                        0.7
+                    } else {
+                        1.0
+                    };
+                    self.display.draw_quad(&mut target, point, radius, shade);
                 }
             }
         }

@@ -24,8 +24,8 @@ const FRAGMENT_SHADER_SOURCE: &'static str = r#"
 pub struct Display {
     pub backend: glium::Display,
     shader_program: glium::Program,
-    width: u32,
-    height: u32,
+    pub width: u32,
+    pub height: u32,
     pub camera: Camera,
 }
 
