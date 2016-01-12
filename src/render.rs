@@ -6,9 +6,9 @@ use camera::{self, Camera};
 const VERTEX_SHADER_SOURCE: &'static str = r#"
     #version 140
     in vec2 position;
-    uniform mat4 projection;
+    uniform mat4 transformation;
     void main() {
-        gl_Position = projection * vec4(position, 0.0, 1.0);
+        gl_Position = transformation * vec4(position, 0.0, 1.0);
     }
 "#;
 
@@ -62,19 +62,20 @@ impl Display {
     pub fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, shade: f32) {
         use glium::Surface;
 
-        let zoom = self.camera.zoom_factor();
-
         // Top/bottom, left/right.
-        let tl = Vertex { position: [(x - radius) * zoom, (y - radius) * zoom] };
-        let tr = Vertex { position: [(x + radius) * zoom, (y - radius) * zoom] };
-        let br = Vertex { position: [(x + radius) * zoom, (y + radius) * zoom] };
-        let bl = Vertex { position: [(x - radius) * zoom, (y + radius) * zoom] };
+        let tl = Vertex { position: [x - radius, y - radius] };
+        let tr = Vertex { position: [x + radius, y - radius] };
+        let br = Vertex { position: [x + radius, y + radius] };
+        let bl = Vertex { position: [x - radius, y + radius] };
         let vertices = [tl, br, tr, tl, bl, br];
-
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+
+        let transformation: [[f32; 4]; 4] =
+            (self.aspect_ratio_transform() * self.zoom_transform()).into();
+
         let uniforms = uniform! {
-            projection: self.scale_aspect_ratio(),
+            transformation: transformation,
             shade: shade,
         };
 
@@ -83,9 +84,14 @@ impl Display {
     }
 
     /// Create a transformation matrix to correct for stretching due to non-square aspect ratios.
-    fn scale_aspect_ratio(&self) -> [[f32; 4]; 4] {
+    fn aspect_ratio_transform(&self) -> Matrix4<f32> {
         let inv_aspect_ratio = self.height as f32 / self.width as f32;
-        Matrix4::from_nonuniform_scale(inv_aspect_ratio, 1.0, 1.0).into()
+        Matrix4::from_nonuniform_scale(inv_aspect_ratio, 1.0, 1.0)
+    }
+
+    /// Create a transformation matrix for the camera zoom.
+    fn zoom_transform(&self) -> Matrix4<f32> {
+        Matrix4::from_scale(self.camera.zoom_factor())
     }
 }
 
