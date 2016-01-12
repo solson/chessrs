@@ -66,16 +66,19 @@ impl Display {
 
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-        let aspect_ratio = self.width as f32 / self.height as f32;
-        let projection: [[f32; 4]; 4] =
-            cgmath::ortho(-aspect_ratio, aspect_ratio, -1.0, 1.0, 1.0, -1.0).into();
         let uniforms = uniform! {
-            projection: projection,
+            projection: self.scale_aspect_ratio(),
             shade: shade,
         };
 
         target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
                     &Default::default()).unwrap();
+    }
+
+    /// Create a transformation matrix to correct for stretching due to non-square aspect ratios.
+    fn scale_aspect_ratio(&self) -> [[f32; 4]; 4] {
+        let inv_aspect_ratio = self.height as f32 / self.width as f32;
+        cgmath::Matrix4::from_nonuniform_scale(inv_aspect_ratio, 1.0, 1.0).into()
     }
 }
 
