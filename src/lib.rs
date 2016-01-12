@@ -9,7 +9,7 @@ mod render;
 pub mod units;
 
 use bit_set::BitSet;
-use cgmath::{EuclideanVector, Vector, Vector2};
+use cgmath::{EuclideanVector, Point2, SquareMatrix, Vector, Vector2, Vector4};
 use glium::glutin::VirtualKeyCode;
 
 use board::Board;
@@ -104,17 +104,16 @@ impl GameState {
         target.clear_color(0.1, 0.1, 0.1, 1.0);
         let radius = 0.47;
 
-        for i in 0..self.board.width() {
-            for j in 0..self.board.height() {
-                if self.board[j as usize][i as usize] {
-                    let x = i as f32 - self.display.camera.center.x;
-                    let y = j as f32 - self.display.camera.center.y;
-                    self.display.draw_quad(&mut target, x, y, radius, 1.0);
+        for x in 0..self.board.width() {
+            for y in 0..self.board.height() {
+                if self.board[y as usize][x as usize] {
+                    let point = Point2::new(x as f32, y as f32);
+                    self.display.draw_quad(&mut target, point, radius, 1.0);
                 }
             }
         }
 
-        self.display.draw_quad(&mut target, 0.0, 0.0, 0.1 * radius, 0.5);
+        self.display.draw_quad(&mut target, self.display.camera.center, 0.1 * radius, 0.5);
         target.finish().unwrap();
     }
 

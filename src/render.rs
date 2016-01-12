@@ -59,14 +59,14 @@ impl Display {
         }
     }
 
-    pub fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, shade: f32) {
+    pub fn draw_quad(&self, target: &mut glium::Frame, p: Point2<f32>, radius: f32, shade: f32) {
         use glium::Surface;
 
         // Top/bottom, left/right.
-        let tl = Vertex { position: [x - radius, y - radius] };
-        let tr = Vertex { position: [x + radius, y - radius] };
-        let br = Vertex { position: [x + radius, y + radius] };
-        let bl = Vertex { position: [x - radius, y + radius] };
+        let tl = Vertex { position: [p.x - radius, p.y - radius] };
+        let tr = Vertex { position: [p.x + radius, p.y - radius] };
+        let br = Vertex { position: [p.x + radius, p.y + radius] };
+        let bl = Vertex { position: [p.x - radius, p.y + radius] };
         let vertices = [tl, br, tr, tl, bl, br];
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
@@ -82,8 +82,8 @@ impl Display {
     }
 
     /// Create a transformation matrix to convert from board coordinates to screen coordinates.
-    fn view_transform(&self) -> Matrix4<f32> {
-        self.aspect_ratio_transform() * self.zoom_transform()
+    pub fn view_transform(&self) -> Matrix4<f32> {
+        self.aspect_ratio_transform() * self.zoom_transform() * self.position_transform()
     }
 
     /// Create a transformation matrix to correct for stretching due to non-square aspect ratios.
@@ -95,6 +95,11 @@ impl Display {
     /// Create a transformation matrix for the camera zoom.
     fn zoom_transform(&self) -> Matrix4<f32> {
         Matrix4::from_scale(self.camera.zoom_factor())
+    }
+
+    /// Create a transformation matrix for the camera position.
+    fn position_transform(&self) -> Matrix4<f32> {
+        Matrix4::from_translation(-self.camera.center.to_vec().extend(0.0))
     }
 }
 
