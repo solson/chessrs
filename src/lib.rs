@@ -9,11 +9,10 @@ mod render;
 pub mod units;
 
 use bit_set::BitSet;
-use cgmath::{Point2, Vector2, EuclideanVector, Vector};
+use cgmath::{EuclideanVector, Vector, Vector2};
 use glium::glutin::VirtualKeyCode;
 
 use board::Board;
-use camera::Camera;
 use render::Display;
 
 /// Actions to take from the game loop.
@@ -25,7 +24,6 @@ pub enum Action {
 
 pub struct GameState {
     display: Display,
-    camera: Camera,
     held_keys: BitSet,
     board: Board<bool>,
 
@@ -42,10 +40,6 @@ impl GameState {
     pub fn new() -> Self {
         GameState {
             display: Display::new_window(),
-            camera: Camera {
-                center: Point2::new(4.0, 2.0),
-                zoom: camera::ZOOM_DEFAULT,
-            },
             board: Board::new_test_board(),
             held_keys: BitSet::new(),
 
@@ -73,7 +67,7 @@ impl GameState {
                 }
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
-                    self.camera.zoom_steps(scroll_amount);
+                    self.display.camera.zoom_steps(scroll_amount);
                 }
 
                 _ => {},
@@ -97,7 +91,8 @@ impl GameState {
 
         if camera_direction != Vector2::zero() {
             let frame_step = camera::CAMERA_SPEED * self.time_factor;
-            self.camera.center = self.camera.center + camera_direction.normalize_to(frame_step);
+            self.display.camera.center = self.display.camera.center
+                + camera_direction.normalize_to(frame_step);
         }
     }
 
@@ -108,19 +103,18 @@ impl GameState {
         let mut target = self.display.backend.draw();
         target.clear_color(0.1, 0.1, 0.1, 1.0);
         let radius = 0.47;
-        let zoom = self.camera.zoom_factor();
 
         for i in 0..self.board.width() {
             for j in 0..self.board.height() {
                 if self.board[j as usize][i as usize] {
-                    let x = i as f32 - self.camera.center.x;
-                    let y = j as f32 - self.camera.center.y;
-                    self.display.draw_quad(&mut target, x, y, radius, zoom, 1.0);
+                    let x = i as f32 - self.display.camera.center.x;
+                    let y = j as f32 - self.display.camera.center.y;
+                    self.display.draw_quad(&mut target, x, y, radius, 1.0);
                 }
             }
         }
 
-        self.display.draw_quad(&mut target, 0.0, 0.0, radius, 0.1 * zoom, 0.5);
+        self.display.draw_quad(&mut target, 0.0, 0.0, 0.1 * radius, 0.5);
         target.finish().unwrap();
     }
 

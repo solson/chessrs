@@ -1,6 +1,7 @@
-use cgmath;
-use glium;
-use glium::glutin;
+use cgmath::{Matrix4, Point, Point2};
+use glium::{self, glutin};
+
+use camera::{self, Camera};
 
 const VERTEX_SHADER_SOURCE: &'static str = r#"
     #version 140
@@ -25,6 +26,7 @@ pub struct Display {
     shader_program: glium::Program,
     width: u32,
     height: u32,
+    pub camera: Camera,
 }
 
 impl Display {
@@ -50,12 +52,17 @@ impl Display {
             shader_program: shader_program,
             width: width,
             height: height,
+            camera: Camera {
+                center: Point2::origin(),
+                zoom: camera::ZOOM_DEFAULT,
+            },
         }
     }
 
-    pub fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, zoom: f32,
-                     shade: f32) {
+    pub fn draw_quad(&self, target: &mut glium::Frame, x: f32, y: f32, radius: f32, shade: f32) {
         use glium::Surface;
+
+        let zoom = self.camera.zoom_factor();
 
         // Top/bottom, left/right.
         let tl = Vertex { position: [(x - radius) * zoom, (y - radius) * zoom] };
@@ -78,7 +85,7 @@ impl Display {
     /// Create a transformation matrix to correct for stretching due to non-square aspect ratios.
     fn scale_aspect_ratio(&self) -> [[f32; 4]; 4] {
         let inv_aspect_ratio = self.height as f32 / self.width as f32;
-        cgmath::Matrix4::from_nonuniform_scale(inv_aspect_ratio, 1.0, 1.0).into()
+        Matrix4::from_nonuniform_scale(inv_aspect_ratio, 1.0, 1.0).into()
     }
 }
 
