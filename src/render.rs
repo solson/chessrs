@@ -71,16 +71,19 @@ impl Display {
         let vertex_buffer = glium::VertexBuffer::new(&self.backend, &vertices).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
-        let transformation: [[f32; 4]; 4] =
-            (self.aspect_ratio_transform() * self.zoom_transform()).into();
-
+        let view: [[f32; 4]; 4] = self.view_transform().into();
         let uniforms = uniform! {
-            transformation: transformation,
+            transformation: view,
             shade: shade,
         };
 
         target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
                     &Default::default()).unwrap();
+    }
+
+    /// Create a transformation matrix to convert from board coordinates to screen coordinates.
+    fn view_transform(&self) -> Matrix4<f32> {
+        self.aspect_ratio_transform() * self.zoom_transform()
     }
 
     /// Create a transformation matrix to correct for stretching due to non-square aspect ratios.
