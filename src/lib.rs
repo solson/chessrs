@@ -84,6 +84,8 @@ impl GameState {
                     let screen_vec = Vector4::new(x_screen, y_screen, 0.0, 1.0);
                     let board_vec = inv_view * screen_vec;
 
+                    // FIXME: Record mouse position in raw screen coordinates to update the derived
+                    // board coordinates when panning and zooming while the mouse is stationary.
                     self.mouse_position = Point2::new(board_vec.x, board_vec.y);
                 }
 
