@@ -132,16 +132,18 @@ impl GameState {
 
         for x in 0..self.board.width() {
             for y in 0..self.board.height() {
-                if self.board[y as usize][x as usize] {
-                    let point = Point2::new(x as f32, y as f32);
-                    let shade = if (x as f32 - self.mouse_board_pos.x).abs() <= radius &&
-                                   (y as f32 - self.mouse_board_pos.y).abs() <= radius {
-                        0.7
-                    } else {
-                        1.0
-                    };
-                    self.display.draw_quad(&mut target, point, radius, shade);
-                }
+                let cell_enabled = self.board[y as usize][x as usize];
+                let mouse_hover =
+                    (x as f32 - self.mouse_board_pos.x).abs() <= radius &&
+                    (y as f32 - self.mouse_board_pos.y).abs() <= radius;
+                let shade = match (cell_enabled, mouse_hover) {
+                    (true, true) => 0.7,
+                    (true, false) => 1.0,
+                    (false, true) => 0.2,
+                    (false, false) => continue,
+                };
+                let point = Point2::new(x as f32, y as f32);
+                self.display.draw_quad(&mut target, point, radius, shade);
             }
         }
 
