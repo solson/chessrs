@@ -71,7 +71,7 @@ impl GameState {
                 }
 
                 KeyboardInput(Released, _, Some(key)) => {
-                    self.held_keys.remove(&(key as usize));
+                    self.held_keys.remove(key as usize);
                 }
 
                 MouseWheel(LineDelta(_, scroll_amount)) => {
@@ -153,7 +153,7 @@ impl GameState {
 
     /// Returns whether the key is currently being held down by the user.
     fn is_key_held(&self, key: VirtualKeyCode) -> bool {
-        self.held_keys.contains(&(key as usize))
+        self.held_keys.contains(key as usize)
     }
 
     /// Returns `1.0` if `positive` is held, `-1.0` if `negative` is held, and `0.0` if both or

@@ -4,7 +4,7 @@ name = "chessrs"
 version = "0.1.0"
 
 [dependencies]
-bit-set = "0.2.0"
+bit-set = "0.3.0"
 cgmath = "0.7.0"
 glium = "0.13.2"
 time = "0.1.34"
